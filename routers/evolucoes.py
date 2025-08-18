@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List
 from datetime import datetime
+from sqlalchemy.orm import Session
 from database import get_db
-from models.telemedicina import ConsultaTelemedicina
+from models.evolucao import EvolucaoClinica
 from models.paciente import PacienteModel
 from models.profissional import Profissional
 from routers.usuarios import verificar_permissao
@@ -12,76 +12,77 @@ from models.usuario import PerfilEnum
 from utils.logs import registrar_log
 
 router = APIRouter(
-    prefix="/telemedicina",
-    tags=["Telemedicina"]
+    prefix="/evolucoes",
+    tags=["Evoluções Médicas"]
 )
 
 # 1) Schemas “in-line”
-class TeleconsultaIn(BaseModel):
+class EvolucaoIn(BaseModel):
     paciente_id: int
-    profissional_id: int
-    data_hora: datetime
-    link_video: str
-    observacoes: str
+    data_registro: datetime
+    anotacoes: str
 
-class TeleconsultaOut(TeleconsultaIn):
+class EvolucaoOut(EvolucaoIn):
     id: int
+    profissional_id: int
 
     class Config:
         from_attributes = True
 
 # 2) Endpoints
-
 @router.post(
-    "/",
-    response_model=TeleconsultaOut,
+    "/{profissional_id}",
+    response_model=EvolucaoOut,
     dependencies=[Depends(verificar_permissao(PerfilEnum.profissional))]
 )
-def agendar_teleconsulta(
-    entrada: TeleconsultaIn,
+def registrar_evolucao(
+    profissional_id: int,
+    entrada: EvolucaoIn,
     request: Request,
     db: Session = Depends(get_db)
 ):
+    # valida paciente e profissional
     paciente = db.query(PacienteModel).filter_by(id=entrada.paciente_id).first()
-    profissional = db.query(Profissional).filter_by(id=entrada.profissional_id).first()
+    profissional = db.query(Profissional).filter_by(id=profissional_id).first()
     if not paciente or not profissional:
         raise HTTPException(status_code=404, detail="Paciente ou profissional não encontrado")
 
-    nova = ConsultaTelemedicina(**entrada.dict())
+    # persiste evolução
+    nova = EvolucaoClinica(**entrada.dict(), profissional_id=profissional_id)
     db.add(nova)
     db.commit()
     db.refresh(nova)
 
+    # registra log de auditoria
     registrar_log(
         request, db,
         token=request.headers.get("authorization", ""),
-        descricao=(
-            f"Teleconsulta agendada: paciente {paciente.id}, "
-            f"profissional {profissional.id} em {entrada.data_hora}"
-        )
+        descricao=f"Registro de evolução paciente {paciente.id} pelo prof. {profissional.id}"
     )
+
     return nova
 
 @router.get(
     "/{paciente_id}",
-    response_model=List[TeleconsultaOut],
-    dependencies=[Depends(verificar_permissao(PerfilEnum.paciente))]
+    response_model=List[EvolucaoOut],
+    dependencies=[Depends(verificar_permissao(PerfilEnum.profissional))]
 )
-def listar_teleconsultas(
+def listar_evolucoes(
     paciente_id: int,
     request: Request,
     db: Session = Depends(get_db)
 ):
-    consultas = (
-        db.query(ConsultaTelemedicina)
+    evolucoes = (
+        db.query(EvolucaoClinica)
           .filter_by(paciente_id=paciente_id)
-          .order_by(ConsultaTelemedicina.data_hora.desc())
+          .order_by(EvolucaoClinica.data_registro.desc())
           .all()
     )
 
     registrar_log(
         request, db,
         token=request.headers.get("authorization", ""),
-        descricao=f"Listagem de teleconsultas do paciente {paciente_id}"
+        descricao=f"Listagem de evoluções do paciente {paciente_id}"
     )
-    return consultas
+
+    return evolucoes

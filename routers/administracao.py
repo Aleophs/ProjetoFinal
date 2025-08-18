@@ -1,27 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import List
 from datetime import datetime
-from database import SessionLocal
+from sqlalchemy.orm import Session
+from database import get_db
 from models.leito import Leito
 from models.suprimento import Suprimento
 from models.financeiro import LancamentoFinanceiro
 from routers.usuarios import verificar_permissao
 from models.usuario import PerfilEnum
+from utils.logs import registrar_log
 
-router = APIRouter(prefix="/administracao", tags=["Administração Hospitalar"])
+router = APIRouter(
+    prefix="/administracao",
+    tags=["Administração Hospitalar"]
+)
 
-# 🔧 DB
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-# 📦 Suprimentos
-
+# 1) Schemas “in-line”
 class SuprimentoIn(BaseModel):
     nome: str
     categoria: str
@@ -30,24 +25,8 @@ class SuprimentoIn(BaseModel):
 
 class SuprimentoOut(SuprimentoIn):
     id: int
-    model_config = {
-        "from_attributes": True
-    }
-
-@router.post("/suprimentos", response_model=SuprimentoOut,
-             dependencies=[Depends(verificar_permissao(PerfilEnum.administrador))])
-def cadastrar_suprimento(item: SuprimentoIn, db: Session = Depends(get_db)):
-    novo = Suprimento(**item.dict())
-    db.add(novo)
-    db.commit()
-    db.refresh(novo)
-    return novo
-
-@router.get("/suprimentos", response_model=List[SuprimentoOut])
-def listar_suprimentos(db: Session = Depends(get_db)):
-    return db.query(Suprimento).all()
-
-# 🛏️ Leitos
+    class Config:
+        from_attributes = True
 
 class LeitoIn(BaseModel):
     numero: str
@@ -57,24 +36,8 @@ class LeitoIn(BaseModel):
 class LeitoOut(LeitoIn):
     id: int
     ocupado: bool
-    model_config = {
-        "from_attributes": True
-    }
-
-@router.post("/leitos", response_model=LeitoOut,
-             dependencies=[Depends(verificar_permissao(PerfilEnum.administrador))])
-def cadastrar_leito(leito: LeitoIn, db: Session = Depends(get_db)):
-    novo = Leito(**leito.dict(), ocupado=False)
-    db.add(novo)
-    db.commit()
-    db.refresh(novo)
-    return novo
-
-@router.get("/leitos", response_model=List[LeitoOut])
-def listar_leitos(db: Session = Depends(get_db)):
-    return db.query(Leito).all()
-
-# 💰 Financeiro
+    class Config:
+        from_attributes = True
 
 class LancamentoIn(BaseModel):
     tipo: str
@@ -86,36 +49,113 @@ class LancamentoIn(BaseModel):
 
 class LancamentoOut(LancamentoIn):
     id: int
-    model_config = {
-        "from_attributes": True
-    }
+    class Config:
+        from_attributes = True
 
-@router.post("/financeiro", response_model=LancamentoOut,
-             dependencies=[Depends(verificar_permissao(PerfilEnum.administrador))])
-def registrar_lancamento(lanc: LancamentoIn, db: Session = Depends(get_db)):
+# 2) Endpoints
+@router.post(
+    "/suprimentos",
+    response_model=SuprimentoOut,
+    dependencies=[Depends(verificar_permissao(PerfilEnum.administrador))]
+)
+def cadastrar_suprimento(
+    item: SuprimentoIn,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    novo = Suprimento(**item.dict())
+    db.add(novo)
+    db.commit()
+    db.refresh(novo)
+    registrar_log(
+        request, db,
+        token=request.headers.get("authorization", ""),
+        descricao=f"Cadastro de suprimento {novo.nome}"
+    )
+    return novo
+
+@router.get("/suprimentos", response_model=List[SuprimentoOut])
+def listar_suprimentos(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    registros = db.query(Suprimento).all()
+    registrar_log(request, db, token="", descricao="Listagem de suprimentos")
+    return registros
+
+@router.post(
+    "/leitos",
+    response_model=LeitoOut,
+    dependencies=[Depends(verificar_permissao(PerfilEnum.administrador))]
+)
+def cadastrar_leito(
+    leito: LeitoIn,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    novo = Leito(**leito.dict(), ocupado=False)
+    db.add(novo)
+    db.commit()
+    db.refresh(novo)
+    registrar_log(request, db, token="", descricao=f"Cadastro de leito {novo.numero}")
+    return novo
+
+@router.get("/leitos", response_model=List[LeitoOut])
+def listar_leitos(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    registros = db.query(Leito).all()
+    registrar_log(request, db, token="", descricao="Listagem de leitos")
+    return registros
+
+@router.post(
+    "/financeiro",
+    response_model=LancamentoOut,
+    dependencies=[Depends(verificar_permissao(PerfilEnum.administrador))]
+)
+def registrar_lancamento(
+    lanc: LancamentoIn,
+    request: Request,
+    db: Session = Depends(get_db)
+):
     novo = LancamentoFinanceiro(**lanc.dict())
     db.add(novo)
     db.commit()
     db.refresh(novo)
+    registrar_log(request, db, token="", descricao=f"Lançamento financeiro {novo.id}")
     return novo
 
 @router.get("/financeiro", response_model=List[LancamentoOut])
-def listar_lancamentos(db: Session = Depends(get_db)):
-    return db.query(LancamentoFinanceiro).order_by(LancamentoFinanceiro.data_lancamento.desc()).all()
+def listar_lancamentos(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    regs = db.query(LancamentoFinanceiro).order_by(
+        LancamentoFinanceiro.data_lancamento.desc()
+    ).all()
+    registrar_log(request, db, token="", descricao="Listagem financeiro")
+    return regs
 
 @router.get("/financeiro/resumo")
-def resumo_financeiro(inicio: datetime, fim: datetime, db: Session = Depends(get_db)):
-    lancamentos = db.query(LancamentoFinanceiro).filter(
+def resumo_financeiro(
+    inicio: datetime,
+    fim: datetime,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    if inicio > fim:
+        raise HTTPException(status_code=400, detail="Período inválido")
+    lancs = db.query(LancamentoFinanceiro).filter(
         LancamentoFinanceiro.data_lancamento.between(inicio, fim)
     ).all()
-
-    receita = sum(l.valor for l in lancamentos if l.tipo.lower() == "receita")
-    despesa = sum(l.valor for l in lancamentos if l.tipo.lower() == "despesa")
+    receita = sum(l.valor for l in lancs if l.tipo.lower() == "receita")
+    despesa = sum(l.valor for l in lancs if l.tipo.lower() == "despesa")
     saldo = receita - despesa
-
+    registrar_log(request, db, token="", descricao="Resumo financeiro")
     return {
         "receita": receita,
         "despesa": despesa,
         "saldo": saldo,
-        "periodo": f"{inicio.strftime('%d/%m/%Y')} - {fim.strftime('%d/%m/%Y')}"
+        "periodo": f"{inicio:%d/%m/%Y} - {fim:%d/%m/%Y}"
     }
