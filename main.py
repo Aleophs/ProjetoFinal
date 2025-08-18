@@ -1,5 +1,3 @@
-# main.py
-
 import os
 import logging
 from fastapi import FastAPI
@@ -9,7 +7,7 @@ from logging.handlers import RotatingFileHandler
 from settings import settings
 from database import Base, engine
 
-# Importe direto dos seus routers atuais
+
 from routers.administracao   import router as administracao_router
 from routers.evolucoes       import router as evolucoes_router
 from routers.internacoes     import router as internacoes_router
