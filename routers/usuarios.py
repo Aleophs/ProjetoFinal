@@ -27,7 +27,7 @@ class UsuarioOut(BaseModel):
     email: EmailStr
     perfil: PerfilEnum
 
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 class LoginIn(BaseModel):
@@ -67,7 +67,7 @@ def criar_usuario(
         raise HTTPException(status_code=400, detail="Email já cadastrado")
 
     senha_hash = gerar_hash(usuario.senha)
-    novo = Usuario(**usuario.dict(exclude={"senha"}), senha_hash=senha_hash)
+    novo = Usuario(**usuario.model_dump(exclude={"senha"}), senha_hash=senha_hash)
     db.add(novo)
     db.commit()
     db.refresh(novo)

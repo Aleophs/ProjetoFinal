@@ -7,7 +7,7 @@ from database import get_db
 from models.profissional import Profissional
 from models.prescricao import Prescricao
 from models.agenda import AgendaMedica
-from models.paciente import PacienteModel
+from models.paciente import Paciente
 from routers.usuarios import verificar_permissao
 from models.usuario import PerfilEnum
 from utils.logs import registrar_log
@@ -30,7 +30,7 @@ class ProfissionalCreate(ProfissionalBase):
 class ProfissionalOut(ProfissionalBase):
     id: int
 
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 class AgendaIn(BaseModel):
@@ -40,7 +40,7 @@ class AgendaOut(AgendaIn):
     id: int
     disponivel: bool
 
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 class PrescricaoIn(BaseModel):
@@ -53,7 +53,7 @@ class PrescricaoOut(PrescricaoIn):
     id: int
     profissional_id: int
 
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 # 2) Endpoints
@@ -67,7 +67,7 @@ def criar_profissional(
     if db.query(Profissional).filter_by(email=dados.email).first():
         raise HTTPException(status_code=400, detail="Email já cadastrado")
 
-    novo = Profissional(**dados.dict())
+    novo = Profissional(**dados.model_dump())
     db.add(novo)
     db.commit()
     db.refresh(novo)
@@ -162,7 +162,7 @@ def emitir_prescricao(
     if not profissional or not paciente:
         raise HTTPException(status_code=404, detail="Profissional ou paciente não encontrado")
 
-    nova = Prescricao(**dados.dict(), profissional_id=profissional_id)
+    nova = Prescricao(**dados.model_dump(), profissional_id=profissional_id)
     db.add(nova)
     db.commit()
     db.refresh(nova)

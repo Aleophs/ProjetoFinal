@@ -43,3 +43,9 @@ class Profissional(Base):
         back_populates="profissional",
         cascade="all, delete-orphan"
     )
+    agendas = relationship(
+        "AgendaMedica",
+        back_populates="profissional",
+        cascade="all, delete-orphan",
+        overlaps="agenda_medica"
+    )

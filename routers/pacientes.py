@@ -1,23 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
-from typing import List
-from datetime import datetime
+from pydantic import BaseModel, EmailStr, constr
+from typing import List, Optional
+from datetime import datetime, date
 from database import get_db
-from models.paciente import PacienteModel, HistoricoClinico
+from models.paciente import HistoricoClinico, Paciente
 from models.consulta import Consulta
 from models.profissional import Profissional
 from models.prescricao import Prescricao
 from models.agenda import AgendaMedica
-from utils.email import enviar_email
+from utils.email_utils import enviar_email
 from routers.usuarios import verificar_permissao
 from models.usuario import PerfilEnum
 from utils.logs import registrar_log
 
-router = APIRouter(
-    prefix="/pacientes",
-    tags=["Pacientes"]
-)
+router = APIRouter(tags=["Pacientes"])
 
 # 1) Schemas “in-line”
 class PacienteBase(BaseModel):
@@ -27,12 +24,29 @@ class PacienteBase(BaseModel):
     data_nascimento: datetime
 
 class PacienteCreate(PacienteBase):
-    pass
+    nome: constr(min_length=1)
+    email: EmailStr
+    telefone: constr(min_length=8)
+    data_nascimento: date
+
+class PacienteRead(PacienteCreate):
+    id: int
+    class ConfigDict:
+        from_attributes = True
 
 class PacienteOut(PacienteBase):
     id: int
 
-    class Config:
+    class ConfigDict:
+        from_attributes = True
+
+class PacienteUpdate(BaseModel):
+    nome: Optional[constr(min_length=1)]        = None
+    email: Optional[EmailStr]                   = None
+    telefone: Optional[constr(min_length=8)]    = None
+    data_nascimento: Optional[date]             = None
+
+    class ConfigDict:
         from_attributes = True
 
 class HistoricoIn(BaseModel):
@@ -43,7 +57,7 @@ class HistoricoIn(BaseModel):
 class HistoricoOut(HistoricoIn):
     id: int
 
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 class ConsultaIn(BaseModel):
@@ -55,7 +69,7 @@ class ConsultaOut(ConsultaIn):
     profissional_id: int
     status: str
 
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 class PrescricaoPacienteOut(BaseModel):
@@ -65,7 +79,7 @@ class PrescricaoPacienteOut(BaseModel):
     posologia: str
     profissional_id: int
 
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 # 2) Endpoints
@@ -75,11 +89,11 @@ def criar_paciente(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    exist = db.query(PacienteModel).filter_by(email=paciente.email).first()
+    exist = db.query(Paciente).filter_by(email=paciente.email).first()
     if exist:
-        raise HTTPException(status_code=400, detail="Email já cadastrado")
+        raise HTTPException(status_code=409, detail="Email já cadastrado")
 
-    novo = PacienteModel(**paciente.dict())
+    novo = Paciente(**paciente.model_dump())
     db.add(novo)
     db.commit()
     db.refresh(novo)
@@ -96,7 +110,7 @@ def listar_pacientes(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    pacientes = db.query(PacienteModel).all()
+    pacientes = db.query(Paciente).all()
     registrar_log(
         request, db,
         token=request.headers.get("authorization", ""),
@@ -110,7 +124,7 @@ def obter_paciente(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    paciente = db.query(PacienteModel).filter_by(id=paciente_id).first()
+    paciente = db.query(Paciente).filter_by(id=paciente_id).first()
     if not paciente:
         raise HTTPException(status_code=404, detail="Paciente não encontrado")
 
@@ -128,10 +142,10 @@ def adicionar_historico(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    if not db.query(PacienteModel).filter_by(id=paciente_id).first():
+    if not db.query(Paciente).filter_by(id=paciente_id).first():
         raise HTTPException(status_code=404, detail="Paciente não encontrado")
 
-    novo = HistoricoClinico(**dado.dict(), paciente_id=paciente_id)
+    novo = HistoricoClinico(**dado.model_dump(), paciente_id=paciente_id)
     db.add(novo)
     db.commit()
     db.refresh(novo)
@@ -165,7 +179,7 @@ def agendar_consulta(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    paciente = db.query(PacienteModel).filter_by(id=paciente_id).first()
+    paciente = db.query(Paciente).filter_by(id=paciente_id).first()
     if not paciente:
         raise HTTPException(status_code=404, detail="Paciente não encontrado")
 
@@ -243,7 +257,7 @@ def cancelar_consulta(
     db.commit()
 
     enviar_email(
-        db.query(PacienteModel).filter_by(id=paciente_id).first().email,
+        db.query(Paciente).filter_by(id=paciente_id).first().email,
         "Consulta Cancelada",
         "Sua consulta foi cancelada com sucesso."
     )
@@ -273,3 +287,22 @@ def listar_prescricoes(
         descricao=f"Listagem de prescrições paciente {paciente_id}"
     )
     return prescricoes
+
+@router.put("/{paciente_id}", response_model=PacienteRead)
+def atualizar_paciente(paciente_id: int, paciente_in: PacienteUpdate, db: Session = Depends(get_db)):
+    paciente = db.get(Paciente, paciente_id)
+    if not paciente:
+        raise HTTPException(404, "Paciente não encontrado")
+    for k, v in paciente_in.model_dump(exclude_unset=True).items():
+        setattr(paciente, k, v)
+    db.commit()
+    db.refresh(paciente)
+    return paciente
+
+@router.delete("/{paciente_id}", status_code=204)
+def deletar_paciente(paciente_id: int, db: Session = Depends(get_db)):
+    paciente = db.get(Paciente, paciente_id)
+    if not paciente:
+        raise HTTPException(404, "Paciente não encontrado")
+    db.delete(paciente)
+    db.commit()

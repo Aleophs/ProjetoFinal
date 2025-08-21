@@ -5,7 +5,7 @@ from typing import List
 from datetime import datetime
 from database import get_db
 from models.telemedicina import ConsultaTelemedicina
-from models.paciente import PacienteModel
+from models.paciente import Paciente
 from models.profissional import Profissional
 from routers.usuarios import verificar_permissao
 from models.usuario import PerfilEnum
@@ -27,7 +27,7 @@ class TeleconsultaIn(BaseModel):
 class TeleconsultaOut(TeleconsultaIn):
     id: int
 
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 # 2) Endpoints
@@ -47,7 +47,7 @@ def agendar_teleconsulta(
     if not paciente or not profissional:
         raise HTTPException(status_code=404, detail="Paciente ou profissional não encontrado")
 
-    nova = ConsultaTelemedicina(**entrada.dict())
+    nova = ConsultaTelemedicina(**entrada.model_dump())
     db.add(nova)
     db.commit()
     db.refresh(nova)

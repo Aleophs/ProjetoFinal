@@ -25,5 +25,5 @@ class Prescricao(Base):
     medicamento      = Column(String(100), index=True, nullable=False)
     posologia        = Column(Text, nullable=False)
 
-    paciente         = relationship("PacienteModel", back_populates="prescricoes")
+    paciente         = relationship("Paciente", back_populates="prescricoes")
     profissional     = relationship("Profissional", back_populates="prescricoes")

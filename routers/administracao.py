@@ -25,7 +25,7 @@ class SuprimentoIn(BaseModel):
 
 class SuprimentoOut(SuprimentoIn):
     id: int
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 class LeitoIn(BaseModel):
@@ -36,7 +36,7 @@ class LeitoIn(BaseModel):
 class LeitoOut(LeitoIn):
     id: int
     ocupado: bool
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 class LancamentoIn(BaseModel):
@@ -49,7 +49,7 @@ class LancamentoIn(BaseModel):
 
 class LancamentoOut(LancamentoIn):
     id: int
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 # 2) Endpoints
@@ -63,7 +63,7 @@ def cadastrar_suprimento(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    novo = Suprimento(**item.dict())
+    novo = Suprimento(**item.model_dump())
     db.add(novo)
     db.commit()
     db.refresh(novo)
@@ -93,7 +93,7 @@ def cadastrar_leito(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    novo = Leito(**leito.dict(), ocupado=False)
+    novo = Leito(**leito.model_dump(), ocupado=False)
     db.add(novo)
     db.commit()
     db.refresh(novo)
@@ -119,7 +119,7 @@ def registrar_lancamento(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    novo = LancamentoFinanceiro(**lanc.dict())
+    novo = LancamentoFinanceiro(**lanc.model_dump())
     db.add(novo)
     db.commit()
     db.refresh(novo)

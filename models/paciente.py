@@ -5,7 +5,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from database import Base
 
-class PacienteModel(Base):
+class Paciente(Base):
     __tablename__ = "pacientes"
 
     id               = Column(Integer, primary_key=True)
@@ -39,6 +39,11 @@ class PacienteModel(Base):
         back_populates="paciente",
         cascade="all, delete-orphan"
     )
+    consultas             = relationship(
+        "Consulta",
+        back_populates="paciente",
+        cascade="all, delete-orphan"
+    )
 
 
 class HistoricoClinico(Base):
@@ -55,4 +60,4 @@ class HistoricoClinico(Base):
     descricao      = Column(Text, nullable=False)
     profissional   = Column(String(100), nullable=False)
 
-    paciente       = relationship("PacienteModel", back_populates="historicos_clinicos")
+    paciente       = relationship("Paciente", back_populates="historicos_clinicos")

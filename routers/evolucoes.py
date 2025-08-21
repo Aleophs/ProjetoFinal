@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from database import get_db
 from models.evolucao import EvolucaoClinica
-from models.paciente import PacienteModel
+from models.paciente import Paciente
 from models.profissional import Profissional
 from routers.usuarios import verificar_permissao
 from models.usuario import PerfilEnum
@@ -26,7 +26,7 @@ class EvolucaoOut(EvolucaoIn):
     id: int
     profissional_id: int
 
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 # 2) Endpoints
@@ -42,13 +42,13 @@ def registrar_evolucao(
     db: Session = Depends(get_db)
 ):
     # valida paciente e profissional
-    paciente = db.query(PacienteModel).filter_by(id=entrada.paciente_id).first()
+    paciente = db.query(Paciente).filter_by(id=entrada.paciente_id).first()
     profissional = db.query(Profissional).filter_by(id=profissional_id).first()
     if not paciente or not profissional:
         raise HTTPException(status_code=404, detail="Paciente ou profissional não encontrado")
 
     # persiste evolução
-    nova = EvolucaoClinica(**entrada.dict(), profissional_id=profissional_id)
+    nova = EvolucaoClinica(**entrada.model_dump(), profissional_id=profissional_id)
     db.add(nova)
     db.commit()
     db.refresh(nova)

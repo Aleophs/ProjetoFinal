@@ -24,5 +24,5 @@ class ConsultaTelemedicina(Base):
     link_video       = Column(String(200), nullable=False, index=True)
     observacoes      = Column(Text, nullable=True)
 
-    paciente         = relationship("PacienteModel", back_populates="telemedicinas")
+    paciente         = relationship("Paciente", back_populates="telemedicinas")
     profissional     = relationship("Profissional", back_populates="telemedicinas")

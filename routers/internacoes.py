@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.internacao import Internacao
 from models.leito import Leito
-from models.paciente import PacienteModel
+from models.paciente import Paciente
 from routers.usuarios import verificar_permissao
 from models.usuario import PerfilEnum
 from utils.logs import registrar_log
@@ -34,7 +34,7 @@ class InternacaoOut(BaseModel):
     data_alta: Optional[datetime]
     motivo: str
 
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 # 2) Endpoints
@@ -58,7 +58,7 @@ def registrar_internacao(
         raise HTTPException(status_code=409, detail="Leito já está ocupado")
 
     leito.ocupado = True
-    interna = Internacao(**dados.dict())
+    interna = Internacao(**dados.model_dump())
     db.add(interna)
     db.commit()
     db.refresh(interna)

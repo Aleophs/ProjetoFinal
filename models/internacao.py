@@ -11,6 +11,8 @@ class Internacao(Base):
     id             = Column(Integer, primary_key=True)
     paciente_id    = Column(Integer, ForeignKey("pacientes.id"), index=True, nullable=False)
     leito_id       = Column(Integer, ForeignKey("leitos.id"),   index=True, nullable=False)
+    profissional_id = Column(Integer, ForeignKey("profissionais.id"), index=True, nullable=False)
+
     data_entrada   = Column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -22,3 +24,4 @@ class Internacao(Base):
 
     paciente       = relationship("Paciente", back_populates="internacoes")
     leito          = relationship("Leito",    back_populates="internacoes")
+    profissional = relationship("Profissional", back_populates="internacoes")
