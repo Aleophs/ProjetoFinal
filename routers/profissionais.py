@@ -158,7 +158,7 @@ def emitir_prescricao(
     db: Session = Depends(get_db)
 ):
     profissional = db.query(Profissional).filter_by(id=profissional_id).first()
-    paciente = db.query(PacienteModel).filter_by(id=dados.paciente_id).first()
+    paciente = db.query(Paciente).filter_by(id=dados.paciente_id).first()
     if not profissional or not paciente:
         raise HTTPException(status_code=404, detail="Profissional ou paciente não encontrado")
 

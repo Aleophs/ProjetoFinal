@@ -23,5 +23,4 @@ class Suprimento(Base):
 
     __table_args__ = (
         CheckConstraint("quantidade >= 0", name="chk_quantidade_nao_negativa"),
-        # UniqueConstraint('nome', 'categoria', name='uq_suprimento_nome_categoria'),
     )

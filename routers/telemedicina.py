@@ -42,7 +42,7 @@ def agendar_teleconsulta(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    paciente = db.query(PacienteModel).filter_by(id=entrada.paciente_id).first()
+    paciente = db.query(Paciente).filter_by(id=entrada.paciente_id).first()
     profissional = db.query(Profissional).filter_by(id=entrada.profissional_id).first()
     if not paciente or not profissional:
         raise HTTPException(status_code=404, detail="Paciente ou profissional não encontrado")

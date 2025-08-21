@@ -48,7 +48,7 @@ def registrar_internacao(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    paciente = db.query(PacienteModel).filter_by(id=dados.paciente_id).first()
+    paciente = db.query(Paciente).filter_by(id=dados.paciente_id).first()
     leito = db.query(Leito).filter_by(id=dados.leito_id).first()
 
     if not paciente or not leito:

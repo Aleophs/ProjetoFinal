@@ -18,7 +18,7 @@ class DatabaseSettings(BaseSettings):
 # Carrega configurações do .env
 settings = DatabaseSettings()
 
-# Ajusta argumentos de conexão conforme o dialeto
+# Ajusta argumentos de conexão
 if settings.database_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 else:
@@ -43,10 +43,6 @@ SessionLocal = sessionmaker(
 Base = declarative_base()
 
 def get_db() -> Generator:
-    """
-    Dependência para rotas FastAPI.
-    Yields uma sessão de banco e garante o fechamento ao final.
-    """
     db = SessionLocal()
     try:
         yield db
@@ -54,8 +50,4 @@ def get_db() -> Generator:
         db.close()
 
 def init_db() -> None:
-    """
-    Cria todas as tabelas definidas via Base.metadata.create_all().
-    Deve ser chamado no startup da aplicação ou em um script de migração.
-    """
     Base.metadata.create_all(bind=engine)

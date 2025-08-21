@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-# Registra seus routers com prefix e tags
+# Registra os routers com prefix e tags
 app.include_router(administracao_router,   prefix="/administracao",   tags=["administracao"])
 app.include_router(evolucoes_router,       prefix="/evolucoes",       tags=["evolucoes"])
 app.include_router(internacoes_router,     prefix="/internacoes",     tags=["internacoes"])

@@ -60,7 +60,7 @@ def client(db_session, monkeypatch):
         yield db_session
     app.dependency_overrides[get_db] = _get_db
 
-    # 5b) Stub do get_current_user (dependência real do seu CRUD)
+    # 5b) Stub do get_current_user
     from auth import get_current_user
     class DummyUser:
         id = 1
@@ -73,7 +73,6 @@ def client(db_session, monkeypatch):
     app.dependency_overrides[get_current_user] = lambda: DummyUser()
 
     # 5c) **Monkey-patch do registrar_log**
-    #    precisa mexer no módulo exato onde foi importado
     import routers.pacientes as pac_mod
     monkeypatch.setattr(
         pac_mod,

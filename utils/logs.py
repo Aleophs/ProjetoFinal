@@ -54,11 +54,6 @@ def registrar_log(
     descricao: str,
     nivel: str = "INFO"
 ) -> None:
-    """
-    Registra auditoria no banco de dados e no arquivo de log.
-    - Captura método HTTP, endpoint, timestamp, usuário e perfil (se houver token).
-    - Salva na tabela 'log_entries' e no arquivo configurado.
-    """
     # Extrai dados do token
     user_email: Optional[str] = None
     perfil: Optional[str] = None
