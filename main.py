@@ -3,11 +3,8 @@ import logging
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from logging.handlers import RotatingFileHandler
-
 from settings import settings
 from database import Base, engine
-
-
 from routers.administracao   import router as administracao_router
 from routers.evolucoes       import router as evolucoes_router
 from routers.internacoes     import router as internacoes_router
@@ -15,7 +12,6 @@ from routers.pacientes       import router as pacientes_router
 from routers.profissionais   import router as profissionais_router
 from routers.telemedicina    import router as telemedicina_router
 from routers.usuarios        import router as usuarios_router
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -46,10 +42,8 @@ async def lifespan(app: FastAPI):
     # Fecha o handler ao encerrar a aplicação
     handler.close()
 
-
 # Cria a aplicação usando Lifespan Events
 app = FastAPI(lifespan=lifespan)
-
 
 # Registra os routers com prefix e tags
 app.include_router(administracao_router,   prefix="/administracao",   tags=["administracao"])
